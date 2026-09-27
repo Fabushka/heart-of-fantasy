@@ -50,7 +50,7 @@ jobs:
              module.json > module.tmp && mv module.tmp module.json
 
       - name: Собрать module.zip
-        run: zip -r module.zip module.json scripts README.md CHANGELOG.md
+        run: zip -r module.zip module.json core subsystems README.md CHANGELOG.md
 
       - name: Описание релиза из CHANGELOG.md
         run: |
