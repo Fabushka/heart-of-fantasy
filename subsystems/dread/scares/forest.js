@@ -1,0 +1,335 @@
+// Биом «Лес Отродья»: гекс кабана и ореол заразы вокруг него (Осколок №1, Глава 2).
+// Кабан проглотил Осколок и распух в пульсирующую тушу; хищники едят его мясо, оно приживается
+// в желудке паразитом — вечный голод и слепая ярость. Внешний знак — чёрная пена у пасти.
+// Здесь погиб отряд Мики: их ловушки, останки и голоса — часть леса.
+import { rounds, minutes, hours } from "../../../core/pf2e.js";
+import { fx, cond, hurt, persistent, status, trapped, ambush } from "./helpers.js";
+import { inflict } from "./afflictions.js";
+
+const nothing = { text: "ничего" };
+const lost = (a) => fx(a, "Сбился с тропы", { img: "icons/svg/cowled.svg", duration: hours(1), rules: [status(["perception", "survival"], -2, "Сбился с тропы")], desc: "−2 к Внимательности и Выживанию." });
+const tracked = (a) => fx(a, "Выслежен", { img: "icons/svg/pawprint.svg", duration: hours(1), rules: [status("stealth", -2, "Выслежен")], desc: "Звери знают твой запах: −2 к Скрытности." });
+
+// ---------- исследование (d20) ----------
+export const FOREST_SCARES = [
+  {
+    id: "f01",
+    name: "Птицы умолкли",
+    img: "icons/svg/sound.svg",
+    text: "Лес замолкает весь разом, будто кто-то задул свечу. В тишине слышно только, как что-то большое жуёт — совсем рядом.",
+    targets: "all",
+    check: "perception",
+    outcomes: {
+      criticalSuccess: { text: "+2 к следующей инициативе: понял, откуда придут", apply: (a) => fx(a, "Слышал зверя", { img: "icons/svg/sound.svg", rules: [{ key: "FlatModifier", selector: "initiative", type: "circumstance", value: 2, label: "Слышал зверя", removeAfterRoll: true }], desc: "+2 к следующей инициативе." }) },
+      success: nothing,
+      failure: { text: "в следующем бою застигнут врасплох в первом раунде", apply: (a) => ambush(a) },
+      criticalFailure: { text: "как провал и напуган 1", apply: async (a) => { await ambush(a); await cond(a, "frightened", 1); } },
+    },
+  },
+  {
+    id: "f02",
+    name: "Чёрная пена на тропе",
+    img: "icons/svg/pawprint.svg",
+    text: "Тропа заляпана чёрной пеной, ещё пузырящейся. Следы уходят вперёд — и через час вы снова стоите над той же пеной.",
+    targets: "all",
+    check: "survival",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "час −2 к Внимательности и Выживанию", apply: (a) => lost(a) },
+      criticalFailure: { text: "как провал, напуган 1 и отбивается от группы", apply: async (a) => { await lost(a); await cond(a, "frightened", 1); return "ГМ переставляет токен"; } },
+    },
+  },
+  {
+    id: "f03",
+    name: "Падаль шевелится",
+    img: "icons/svg/bones.svg",
+    text: "Туша оленя у тропы выпотрошена, но брюхо ходит волнами. Изнутри что-то хочет наружу — и оно слышит ваши шаги.",
+    targets: "all",
+    check: "will",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: { text: "напуган 1", apply: (a) => cond(a, "frightened", 1) },
+      failure: { text: "напуган 2, тошнота 1", apply: async (a) => { await cond(a, "frightened", 2); await cond(a, "sickened", 1); } },
+      criticalFailure: { text: "напуган 2, тошнота 2", apply: async (a) => { await cond(a, "frightened", 2); await cond(a, "sickened", 2); } },
+    },
+  },
+  {
+    id: "f04",
+    name: "Запах жареного мяса",
+    img: "icons/svg/fire.svg",
+    text: "Откуда-то тянет жареным мясом, и рот наполняется слюной. Голод чужой, звериный — но желудок сводит по-настоящему.",
+    targets: "all",
+    check: "will",
+    note: "Голод Отродья — проклятие региона. Можно ли снять его спасбросками или только ритуалом — решает ГМ.",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: { text: "10 минут ошеломлён 1: думает только о еде", apply: (a) => fx(a, "Чужой голод", { img: "icons/svg/fire.svg", duration: minutes(10), conds: [["stupefied", 1]], desc: "Ошеломлён 1: мысли только о еде." }) },
+      failure: { text: "час ошеломлён 1, тошнота 1", apply: async (a) => { await fx(a, "Чужой голод", { img: "icons/svg/fire.svg", duration: hours(1), conds: [["stupefied", 1]], desc: "Ошеломлён 1: мысли только о еде." }); await cond(a, "sickened", 1); } },
+      criticalFailure: {
+        text: "находит мясо и ест: Голод Отродья, стадия 1",
+        apply: async (a, c) => { await cond(a, "sickened", 1); return inflict(a, "spawnHunger", 1, c.dc); },
+      },
+    },
+  },
+  {
+    id: "f05",
+    name: "Ловушка: капкан разведчиков",
+    img: "icons/svg/trap.svg",
+    text: "Отряд Мики ставил капканы на заражённых. Один так и остался взведённым под листвой — и дождался.",
+    targets: "one",
+    check: "reflex",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "{r}d8 колющего, обездвижен (высвободиться)", apply: async (a, c) => { await hurt(a, `${c.rank}d8[piercing]`, 1, "Капкан"); return trapped(a, "Капкан", { slug: "immobilized", dc: c.dc, img: "icons/svg/trap.svg", desc: "Нога в капкане." }); } },
+      criticalFailure: {
+        text: "{r}d8 колющего, {r}d4 продолжительного кровотечения, обездвижен (высвободиться)",
+        apply: async (a, c) => { await hurt(a, `${c.rank}d8[piercing]`, 1, "Капкан"); await persistent(a, "bleed", `${c.rank}d4`); return trapped(a, "Капкан", { slug: "immobilized", dc: c.dc, img: "icons/svg/trap.svg", desc: "Нога в капкане, кость хрустнула." }); },
+      },
+    },
+  },
+  {
+    id: "f06",
+    name: "Ловушка: сеть с колокольцами",
+    img: "icons/svg/net.svg",
+    text: "С ветвей падает сеть, увешанная колокольцами. Звон разносится по лесу — и лес отвечает рычанием.",
+    targets: "one",
+    check: "reflex",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "схвачен (высвободиться)", apply: (a, c) => trapped(a, "Сеть", { slug: "grabbed", dc: c.dc, desc: "Запутался в сети." }) },
+      criticalFailure: {
+        text: "схвачен и обездвижен (высвободиться); в следующем бою застигнут врасплох в первом раунде",
+        apply: async (a, c) => { await ambush(a); return trapped(a, "Сеть", { slug: "restrained", dc: c.dc, desc: "Запутался в сети с головой." }); },
+      },
+    },
+  },
+  {
+    id: "f07",
+    name: "Кровоточащее дерево",
+    img: "icons/svg/acid.svg",
+    text: "Кора лопнула, и из трещин сочится смола — чёрная, горячая, пахнущая мясом. Кто-то успел опереться на ствол.",
+    targets: "one",
+    check: "fortitude",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "чёрная смола, стадия 1", apply: (a, c) => inflict(a, "blackTar", 1, c.dc) },
+      criticalFailure: { text: "чёрная смола, стадия 2", apply: (a, c) => inflict(a, "blackTar", 2, c.dc) },
+    },
+  },
+  {
+    id: "f08",
+    name: "Гнездо в дупле",
+    img: "icons/svg/biohazard.svg",
+    text: "Из дупла вылетает рой ос. Их брюшки блестят чёрным, и жалят они не для защиты — они голодны.",
+    targets: "all",
+    check: "reflex",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: { text: "половина {r}d6 колющего", apply: (a, c) => hurt(a, `${c.rank}d6[piercing]`, 0.5, "Осы") },
+      failure: { text: "{r}d6 колющего, тошнота 1", apply: async (a, c) => { await hurt(a, `${c.rank}d6[piercing]`, 1, "Осы"); await cond(a, "sickened", 1); } },
+      criticalFailure: { text: "двойной урон, тошнота 2", apply: async (a, c) => { await hurt(a, `${c.rank}d6[piercing]`, 2, "Осы"); await cond(a, "sickened", 2); } },
+    },
+  },
+  {
+    id: "f09",
+    name: "Следы вокруг лагеря",
+    img: "icons/svg/pawprint.svg",
+    text: "Утром вокруг стоянки — кольцо следов. Зверь ходил кругами всю ночь, и ни один часовой его не заметил.",
+    targets: "all",
+    check: "survival",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "час −2 к Скрытности; в следующем бою застигнут врасплох в первом раунде", apply: async (a) => { await tracked(a); await ambush(a); } },
+      criticalFailure: { text: "как провал и напуган 1", apply: async (a) => { await tracked(a); await ambush(a); await cond(a, "frightened", 1); } },
+    },
+  },
+  {
+    id: "f10",
+    name: "Дерево с пастью",
+    img: "icons/svg/trap.svg",
+    text: "Дупло в стволе смыкается, как челюсть. Внутри — ряды древесных зубов и чья-то рука в рукаве разведчика.",
+    targets: "one",
+    check: "reflex",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "{r}d8 колющего, схвачен (высвободиться)", apply: async (a, c) => { await hurt(a, `${c.rank}d8[piercing]`, 1, "Дерево с пастью"); return trapped(a, "Пасть дерева", { slug: "grabbed", dc: c.dc, img: "icons/svg/trap.svg", desc: "Застрял в пасти дерева." }); } },
+      criticalFailure: { text: "{2r}d8 колющего, схвачен и обездвижен (высвободиться)", apply: async (a, c) => { await hurt(a, `${c.rank * 2}d8[piercing]`, 1, "Дерево с пастью"); return trapped(a, "Пасть дерева", { slug: "restrained", dc: c.dc, img: "icons/svg/trap.svg", desc: "Пасть сомкнулась по плечи." }); } },
+    },
+  },
+  {
+    id: "f11",
+    name: "Рычание со всех сторон",
+    img: "icons/svg/terror.svg",
+    text: "Рычание идёт отовсюду сразу — из кустов, из-под корней, сверху. Кажется, рычит сам лес.",
+    targets: "all",
+    check: "will",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: { text: "напуган 1", apply: (a) => cond(a, "frightened", 1) },
+      failure: { text: "напуган 2, час −2 к инициативе", apply: async (a) => { await cond(a, "frightened", 2); await fx(a, "Рычание", { img: "icons/svg/terror.svg", duration: hours(1), rules: [status("initiative", -2, "Рычание")], desc: "−2 к инициативе." }); } },
+      criticalFailure: { text: "напуган 3, час −2 к инициативе", apply: async (a) => { await cond(a, "frightened", 3); await fx(a, "Рычание", { img: "icons/svg/terror.svg", duration: hours(1), rules: [status("initiative", -2, "Рычание")], desc: "−2 к инициативе." }); } },
+    },
+  },
+  {
+    id: "f12",
+    name: "Сердце под землёй",
+    img: "icons/svg/heal.svg",
+    text: "Земля пульсирует под ногами — медленно, тяжело. Где-то далеко бьётся сердце раздутой туши, и ваше подстраивается под его ритм.",
+    targets: "all",
+    check: "fortitude",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "утомлён на час", apply: (a) => fx(a, "Чужой ритм", { img: "icons/svg/heal.svg", duration: hours(1), conds: [["fatigued"]], desc: "Утомлён." }) },
+      criticalFailure: { text: "истощён 1, утомлён на час", apply: async (a) => { await cond(a, "drained", 1); await fx(a, "Чужой ритм", { img: "icons/svg/heal.svg", duration: hours(1), conds: [["fatigued"]], desc: "Утомлён." }); } },
+    },
+  },
+  {
+    id: "f13",
+    name: "Останки разведчика",
+    img: "icons/svg/skull.svg",
+    text: "Под елью лежит разведчик из отряда Мики. Обглодан до пояса. Рука сжимает страницу из дневника, глаза открыты.",
+    targets: "all",
+    check: "will",
+    note: "Страница — зацепка о заразе или о судьбе отряда. При успехе и провале ГМ её отдаёт.",
+    outcomes: {
+      criticalSuccess: {
+        text: "зацепка и +2 к следующей проверке Вспомнить знания о заразе",
+        apply: (a) => fx(a, "Прочёл страницу", { img: "icons/svg/book.svg", duration: hours(1), rules: [{ key: "FlatModifier", selector: "skill-check", predicate: ["action:recall-knowledge"], type: "circumstance", value: 2, label: "Страница дневника", removeAfterRoll: true }], desc: "+2 к следующей проверке Вспомнить знания." }),
+      },
+      success: { text: "зацепка от ГМ" },
+      failure: { text: "зацепка от ГМ, но напуган 2", apply: (a) => cond(a, "frightened", 2) },
+      criticalFailure: { text: "зацепки нет, тошнота 2, напуган 1", apply: async (a) => { await cond(a, "sickened", 2); await cond(a, "frightened", 1); } },
+    },
+  },
+  {
+    id: "f14",
+    name: "Бешеная лиса",
+    img: "icons/svg/pawprint.svg",
+    text: "Лиса выходит на тропу и садится. С морды капает чёрная пена. Потом она прыгает — прямо в лицо.",
+    targets: "one",
+    check: "reflex",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: { text: "царапины: {r}d4 рубящего", apply: (a, c) => hurt(a, `${c.rank}d4[slashing]`, 1, "Бешеная лиса") },
+      failure: { text: "укус: {r}d6 колющего, {r}d4 продолжительного кровотечения", apply: async (a, c) => { await hurt(a, `${c.rank}d6[piercing]`, 1, "Бешеная лиса"); await persistent(a, "bleed", `${c.rank}d4`); } },
+      criticalFailure: { text: "как провал и напуган 2", apply: async (a, c) => { await hurt(a, `${c.rank}d6[piercing]`, 1, "Бешеная лиса"); await persistent(a, "bleed", `${c.rank}d4`); await cond(a, "frightened", 2); } },
+    },
+  },
+  {
+    id: "f15",
+    name: "Чёрные нити в ручье",
+    img: "icons/svg/poison.svg",
+    text: "Вода в ручье чистая, но в ней колышутся чёрные нити, похожие на волосы. Их много. Вы уже наполнили фляги.",
+    targets: "all",
+    check: "fortitude",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "тошнота 1; вода во флягах испорчена", apply: (a) => cond(a, "sickened", 1) },
+      criticalFailure: { text: "тошнота 2, утомлён на час; вода испорчена", apply: async (a) => { await cond(a, "sickened", 2); await fx(a, "Дурная вода", { img: "icons/svg/poison.svg", duration: hours(1), conds: [["fatigued"]], desc: "Утомлён." }); } },
+    },
+  },
+  {
+    id: "f16",
+    name: "Корни",
+    img: "icons/svg/net.svg",
+    text: "Корни вырываются из земли и оплетают лодыжки. Они тёплые и влажные, на них чёрная пена.",
+    targets: "all",
+    check: "reflex",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "обездвижен (высвободиться)", apply: (a, c) => trapped(a, "Корни", { slug: "immobilized", dc: c.dc, desc: "Корни держат ноги." }) },
+      criticalFailure: { text: "сбит с ног, обездвижен (высвободиться)", apply: async (a, c) => { await cond(a, "prone"); return trapped(a, "Корни", { slug: "immobilized", dc: c.dc, desc: "Корни прижали к земле." }); } },
+    },
+  },
+  {
+    id: "f17",
+    name: "Лицо в коре",
+    img: "icons/svg/mystery-man.svg",
+    text: "В коре старого дуба проступает лицо — молодое, почти мальчишеское. Губы шевелятся: он зовёт своих по именам.",
+    targets: "one",
+    check: "will",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: { text: "напуган 1", apply: (a) => cond(a, "frightened", 1) },
+      failure: { text: "напуган 1, 10 минут ошеломлён 1", apply: async (a) => { await cond(a, "frightened", 1); await fx(a, "Лицо в коре", { img: "icons/svg/mystery-man.svg", duration: minutes(10), conds: [["stupefied", 1]], desc: "Ошеломлён 1." }); } },
+      criticalFailure: {
+        text: "заворожён минуту, уходит в чащу на голос",
+        apply: async (a) => { await fx(a, "Зов из коры", { img: "icons/svg/mystery-man.svg", duration: minutes(1), conds: [["fascinated"]], desc: "Заворожён: идёт в чащу на голос. Враждебное действие против него снимает эффект." }); return "ГМ переставляет токен на 60 футов"; },
+      },
+    },
+  },
+  {
+    id: "f18",
+    name: "Голодные глаза",
+    img: "icons/svg/eye.svg",
+    text: "Ночью в темноте за костром загораются глаза — десятки пар. Они не приближаются и не уходят. До рассвета.",
+    targets: "all",
+    check: "will",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: nothing,
+      failure: { text: "утомлён на час", apply: (a) => fx(a, "Бессонная ночь", { img: "icons/svg/eye.svg", duration: hours(1), conds: [["fatigued"]], desc: "Утомлён." }) },
+      criticalFailure: { text: "утомлён до полноценного отдыха, напуган 1", apply: async (a) => { await cond(a, "fatigued"); await cond(a, "frightened", 1); } },
+    },
+  },
+  {
+    id: "f19",
+    name: "Чужая ярость",
+    img: "icons/svg/fire.svg",
+    text: "Волна слепой злобы накрывает без причины. Хочется ударить — всё равно кого. Спутник рядом вдруг кажется добычей.",
+    targets: "all",
+    check: "will",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: { text: "10 минут −2 к Дипломатии", apply: (a) => fx(a, "Злоба", { img: "icons/svg/fire.svg", duration: minutes(10), rules: [status("diplomacy", -2, "Злоба")], desc: "−2 к Дипломатии." }) },
+      failure: { text: "час −2 к Дипломатии, 10 минут ошеломлён 1", apply: async (a) => { await fx(a, "Злоба", { img: "icons/svg/fire.svg", duration: hours(1), rules: [status("diplomacy", -2, "Злоба")], desc: "−2 к Дипломатии." }); await fx(a, "Злоба — туман", { img: "icons/svg/fire.svg", duration: minutes(10), conds: [["stupefied", 1]], desc: "Ошеломлён 1." }); } },
+      criticalFailure: {
+        text: "1 раунд в замешательстве (бросается на ближайшего), час −2 к Дипломатии",
+        apply: async (a) => { await fx(a, "Злоба", { img: "icons/svg/fire.svg", duration: hours(1), rules: [status("diplomacy", -2, "Злоба")], desc: "−2 к Дипломатии." }); await fx(a, "Вспышка ярости", { img: "icons/svg/fire.svg", duration: rounds(1), conds: [["confused"]], desc: "В замешательстве." }); },
+      },
+    },
+  },
+  {
+    id: "f20",
+    name: "Бегущее стадо",
+    img: "icons/svg/pawprint.svg",
+    text: "Издалека доносится визг, от которого дрожат листья. Через миг сквозь чащу ломится стадо оленей — они бегут от чего-то и не видят ничего перед собой.",
+    targets: "all",
+    check: "reflex",
+    outcomes: {
+      criticalSuccess: nothing,
+      success: { text: "половина {r}d8 дробящего", apply: (a, c) => hurt(a, `${c.rank}d8[bludgeoning]`, 0.5, "Стадо") },
+      failure: { text: "{r}d8 дробящего, сбит с ног", apply: async (a, c) => { await hurt(a, `${c.rank}d8[bludgeoning]`, 1, "Стадо"); await cond(a, "prone"); } },
+      criticalFailure: { text: "двойной урон, сбит с ног", apply: async (a, c) => { await hurt(a, `${c.rank}d8[bludgeoning]`, 2, "Стадо"); await cond(a, "prone"); } },
+    },
+  },
+];
+
+// ---------- бой: лесные замены названий, текстов и существ ----------
+// Механика боевой таблицы та же; меняется то, что видят игроки, и кого можно призвать.
+export const FOREST_COMBAT = {
+  c01: { name: "Голоса отряда", img: "icons/svg/sound.svg", text: "Из чащи доносятся голоса разведчиков Мики — они зовут друг друга, как в свою последнюю ночь. Потом зовут вас." },
+  c02: { name: "Истерика", img: "icons/svg/daze.svg", text: "Издалека доносится визг кабана, и горло само сжимается — не то в хохот, не то в рыдание. Остановиться не получается." },
+  c06: { name: "Пляска света", img: "icons/svg/sun.svg", text: "Листва смыкается и расходится, солнце бьёт в глаза вспышками. В каждой вспышке зверь ближе, чем в прошлой." },
+  c07: { name: "Корни", img: "icons/svg/net.svg", text: "Корни вырываются из земли и оплетают лодыжки. Они тёплые и влажные, на них чёрная пена." },
+  c09: { name: "Стая", img: "icons/svg/pawprint.svg", text: "Из подлеска выходят волки. Пена у пастей чёрная, глаза не моргают. Они не рычат — просто идут.", summon: "pack" },
+  c10: { name: "Зверь крупнее, чем должен быть", img: "icons/svg/pawprint.svg", text: "Ломая кусты, на поляну выходит зверь вдвое больше своих сородичей. Шерсть клочьями, из пасти — чёрная пена. Он голоден.", summon: "beasts" },
+  c11: { name: "Земля шевелится", img: "icons/svg/biohazard.svg", text: "Из-под листвы поднимаются хитиновые спины. Их привлёк запах крови — вашей.", summon: "vermin" },
+  c12: { name: "Туман в голове", text: "Мысли вязнут, как ноги в болоте. Пальцы путают ремни и застёжки, а в голове звучит только одно: есть." },
+  c13: { name: "Знак на коре", text: "На стволе вырезан знак — рукой разведчика. Он предупреждал своих. Под знаком засохла кровь." },
+  c14: { name: "Мертвенный холод", text: "Тепло уходит из тела, как из туши на снегу. Пальцы белеют, дыхание встаёт паром." },
+  c15: { name: "Рой из гнилого пня", text: "Трухлявый пень лопается, и из него выплёскиваются жуки и многоножки. Они лезут под одежду и кусают." },
+  c16: { name: "Кошмар наяву", text: "Вы узнаёте эту тропу: она снилась вам в детстве, в самом страшном сне. В конце её всё ещё кто-то ждёт." },
+  c17: { name: "Предсмертный крик", text: "Где-то рядом кричит раненый — долго, на одной ноте, пока крик не обрывается хрустом. Уши заливает звон." },
+  c18: { name: "Бурелом", img: "icons/svg/lightning.svg", text: "Ветра нет, но сучья и камни летят со всех сторон. Лес швыряет в вас всё, что лежит под ногами." },
+  c20: { name: "Зов земли", text: "Навалилась усталость, будто вы не спали неделю. Мох мягкий, земля тёплая и зовёт лечь. Всего на минуту." },
+};

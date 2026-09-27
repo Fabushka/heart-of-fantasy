@@ -4,7 +4,8 @@ import { registerDreadSettings, S } from "./settings.js";
 import { IMMUNITY_SLUG, getDread, dreadValue, partyInZone, migrateDread } from "./state.js";
 import { onMessage, onCombatUpdate, applyDread, rollCalm } from "./growth.js";
 import { meltdown, meltdownSelected, onImmunityGone } from "./meltdown.js";
-import { triggerScare, dreadCheck, endScares, onCombatStart, TABLES } from "./scares/engine.js";
+import { triggerScare, dreadCheck, endScares, onCombatStart } from "./scares/engine.js";
+import { BIOMES, getBiome, setBiome, scareList } from "./scares/biomes.js";
 import { registerSummonAction } from "./scares/summons.js";
 import { manage, enterZone, leaveZone, lowerDread } from "./manage.js";
 
@@ -57,6 +58,9 @@ export default {
     getDread,
     dreadValue,
     partyInZone,
-    tables: TABLES,
+    biomes: BIOMES,
+    getBiome,
+    setBiome,
+    scareList,
   },
 };

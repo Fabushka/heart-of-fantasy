@@ -33,9 +33,30 @@ export const GROUPS = {
     ],
     fallback: "dead",
   },
+  // Лес Отродья: заражённые хищники с чёрной пеной у пасти
+  pack: {
+    label: "стая",
+    pairAt: 2, // стая: двое, если зверь слабее партии на 2+
+    list: [[1, "Волк", "BN5Lb6IsQ9Wyu3rL"], [2, "Варг", "x7Aa4Tvr9eBaHryF"], [3, "Лютоволк", "AFWmiIBJ7ypgydQD"], [3, "Гиенодон", "1Qqu3b4J4aJYEQOX"]],
+  },
+  beasts: {
+    label: "крупный зверь",
+    list: [
+      [2, "Кабан", "IyhbcdTVmkV4pSju"], [3, "Гризли", "6K4RWus85o8iqy0t"], [4, "Даэодон", "v4KP0HYaygoFOIlo"],
+      [6, "Пещерный медведь", "AZIG0COCaDBronJa"], [8, "Мегапримат", "pyTr1VOPrPYH8UNg"],
+    ],
+  },
+  vermin: {
+    label: "хитин",
+    list: [
+      [-1, "Гигантская многоножка", "NRBgcu0LkXXp8mtp"], [1, "Паук-охотник", "A4VgQIHsqJKssQOM"], [2, "Гигантский муравей", "mEZUTqNIgu0ASApu"],
+      [3, "Анкрав", "V1Kr5aiPaTM0mDFu"], [3, "Гигантский богомол", "KCVKMVYRuq6huXGz"], [4, "Гигантский жук-олень", "MkupNnMKqDBElhhp"],
+      [5, "Рой армейских муравьёв", "drcSWbCIWc7P4lKO"], [6, "Гигантский тарантул", "4ISm82EYQeOndynw"], [8, "Матка анкравов", "qYw2ToefDK5Vrwgu"],
+    ],
+  },
 };
 
-// Лучшее существо не выше уровня партии −1; два, если оно слабее партии на 4+
+// Лучшее существо не выше уровня партии −1; два, если оно слабее партии на 4+ (у стаи — на 2+)
 export function pickSummon(groupKey, partyLevel) {
   const group = GROUPS[groupKey];
   const fit = group.list.filter(([lvl]) => lvl <= partyLevel - 1);
@@ -46,7 +67,7 @@ export function pickSummon(groupKey, partyLevel) {
   }
   const top = Math.max(...fit.map(([l]) => l));
   const [level, name, id] = pick(fit.filter(([l]) => l === top));
-  return { level, name, uuid: MC + id, count: level <= partyLevel - 4 ? 2 : 1 };
+  return { level, name, uuid: MC + id, count: level <= partyLevel - (group.pairAt ?? 4) ? 2 : 1 };
 }
 
 export function summonButton(choice) {

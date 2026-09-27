@@ -49,6 +49,36 @@ export const AFFLICTIONS = {
       { text: "ослаблен 2, неуклюж 1", rules: [grant(C.enfeebled, { value: 2, lock: true }), grant(C.clumsy, { value: 1, lock: true })] },
     ],
   },
+  // Лес Отродья (Осколок №1, кабан): проклятое мясо оседает в желудке паразитом
+  spawnHunger: {
+    name: "Голод Отродья",
+    type: "проклятие",
+    img: "icons/svg/pawprint.svg",
+    save: "fortitude",
+    interval: days(1),
+    intervalText: "раз в день",
+    lore: "Кусок проклятого мяса не переварился и прижился в желудке. Голод не утоляется ничем, а под ним тлеет чужая слепая ярость.",
+    stages: [
+      { text: "ослаблен 1: сколько ни ешь — мало", rules: [grant(C.enfeebled, { value: 1, lock: true })] },
+      { text: "ослаблен 1, ошеломлён 1: мысли только о мясе", rules: [grant(C.enfeebled, { value: 1, lock: true }), grant(C.stupefied, { value: 1, lock: true })] },
+      { text: "ослаблен 2, ошеломлён 2, утомлён, чёрная пена у рта", rules: [grant(C.enfeebled, { value: 2, lock: true }), grant(C.stupefied, { value: 2, lock: true }), grant(C.fatigued, { lock: true })] },
+    ],
+  },
+  blackTar: {
+    name: "Чёрная смола",
+    type: "яд",
+    img: "icons/svg/acid.svg",
+    save: "fortitude",
+    interval: minutes(10),
+    intervalText: "каждые 10 минут",
+    maxDuration: hours(1),
+    lore: "Смола заражённого дерева въедается в кожу и жжёт изнутри. Пальцы липнут и немеют.",
+    stages: [
+      { text: "неуклюж 1", rules: [grant(C.clumsy, { value: 1, lock: true })] },
+      { text: "неуклюж 2", rules: [grant(C.clumsy, { value: 2, lock: true })] },
+      { text: "неуклюж 2, ослаблен 1", rules: [grant(C.clumsy, { value: 2, lock: true }), grant(C.enfeebled, { value: 1, lock: true })] },
+    ],
+  },
 };
 
 export const getAffliction = (actor, key) =>

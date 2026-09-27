@@ -156,11 +156,15 @@ export const MELTDOWNS = [
         text: "Эффект заклинания <b>Героизм</b> 3-го ранга на 2 раунда.",
         apply: async (a) => {
           const src = await fromCompendium(EFFECT.heroism, { system: { duration: R2, level: { value: 3 } } });
-          if (src) await addItem(a, src);
+          if (!src) return;
+          for (const old of a.itemTypes.effect.filter((e) => e.name === src.name)) await old.delete();
+          await addItem(a, src);
         },
       },
       {
-        text: "Произносит <b>Успокаивающие слова</b> для себя и союзников в радиусе 30 футов.",
+        text:
+          "Он и союзники в радиусе 30 футов получают эффект заклинания <b>Успокаивающие слова</b> на минуту: " +
+          "+1 статусный к Воле, +2 против эмоций (с 9-го уровня +2 и +3 — ранг растёт, как у фокусного заклинания).",
         apply: async (a) => {
           const me = tokenOf(a);
           const tokens = me ? canvas.tokens.placeables : [];
@@ -169,8 +173,11 @@ export const MELTDOWNS = [
           const src = await fromCompendium(EFFECT.soothingWords, {
             system: { duration: minutes(1), level: { value: spellRank(a.level) } },
           });
-          if (src) for (const t of targets) await addItem(t, foundry.utils.deepClone(src));
-          return `Успокаивающие слова: ${targets.map((t) => t.name).join(", ")}`;
+          if (src) for (const t of targets) {
+            for (const old of t.itemTypes.effect.filter((e) => e.name === src.name)) await old.delete();
+            await addItem(t, foundry.utils.deepClone(src));
+          }
+          return `эффект получили: ${targets.map((t) => t.name).join(", ")}`;
         },
       },
     ],

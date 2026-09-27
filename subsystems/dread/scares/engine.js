@@ -4,22 +4,12 @@ import {
 } from "../../../core/pf2e.js";
 import { S } from "../settings.js";
 import { TAG, dreadValue, partyInZone } from "../state.js";
-import { COMBAT_SCARES } from "./combat.js";
-import { EXPLORATION_SCARES } from "./exploration.js";
 import { summonButton, pickSummon, dismissSummons } from "./summons.js";
 import { scareFlags } from "./helpers.js";
+import { BIOMES, getBiome, scareList, findScare } from "./biomes.js";
 
-export const TABLES = {
-  combat: { label: "бой", list: COMBAT_SCARES },
-  exploration: { label: "исследование", list: EXPLORATION_SCARES },
-};
-const byId = new Map([...COMBAT_SCARES, ...EXPLORATION_SCARES].map((s) => [s.id, s]));
-export const scareById = (id) => byId.get(id);
+export const TABLE_LABEL = { combat: "бой", exploration: "исследование" };
 
-const CHECK_RU = {
-  will: "Воля", fortitude: "Стойкость", reflex: "Рефлекс", perception: "Внимательность",
-  survival: "Выживание", athletics: "Атлетика", acrobatics: "Акробатика",
-};
 const OUTCOME_RU = { criticalSuccess: "Крит. успех", success: "Успех", failure: "Провал", criticalFailure: "Крит. провал" };
 
 const enrich = (html) => game.pf2e.TextEditor.enrichHTML(html);
@@ -62,7 +52,7 @@ function scareCard(S_, table, n, env, targets, extra) {
   <header>
     <img class="hof-icon" src="${S_.img ?? "icons/svg/hazard.svg"}" alt="">
     <div>
-      <span class="hof-kicker">Испуг · ${TABLES[table].label} · d20 = ${n}</span>
+      <span class="hof-kicker">Испуг · ${TABLE_LABEL[table]} · ${BIOMES[env.biome].short} · d20 = ${n}</span>
       <h3>${S_.name}</h3>
     </div>
   </header>
@@ -76,8 +66,9 @@ function scareCard(S_, table, n, env, targets, extra) {
 }
 
 // ---------- Испуг ----------
-// party — персонажи в зоне. table — "combat" | "exploration" | null (по обстановке). n — номер или случайный.
-export async function triggerScare(party, scene, reason = "", { force = false, table = null, n = null } = {}) {
+// party — персонажи в зоне. table — "combat" | "exploration" | null (по обстановке).
+// biome — ключ биома или null (биом сцены). n — номер или случайный.
+export async function triggerScare(party, scene, reason = "", { force = false, table = null, n = null, biome = null } = {}) {
   party = uniq(party);
   if (!party.length) return;
   const combat = game.combat?.started ? game.combat : null;
@@ -89,10 +80,11 @@ export async function triggerScare(party, scene, reason = "", { force = false, t
   if (combat) await combat.setFlag("world", "heartDreadScareRound", combat.round);
 
   table ??= combat ? "combat" : "exploration";
+  biome ??= getBiome(scene);
   n ??= await rollDie(20);
-  const scare = TABLES[table].list[n - 1];
+  const scare = scareList(table, biome)[n - 1];
   const level = party.reduce((s, a) => s + a.level, 0) / party.length;
-  const env = { level, rank: spellRank(level), dc: levelDC(level), inCombat: !!combat, scene, table };
+  const env = { level, rank: spellRank(level), dc: levelDC(level), inCombat: !!combat, scene, table, biome };
 
   let targets = [];
   let extra = "";
@@ -109,7 +101,7 @@ export async function triggerScare(party, scene, reason = "", { force = false, t
         img: "icons/svg/hazard.svg",
         rules,
         desc: `<p>Бросьте проверку из карточки Испуга. Штраф Ужаса: −${Math.max(0, dv - 1)}.</p>`,
-        flags: scareFlags({ heartScarePending: scare.id, heartScareDc: env.dc, heartScareEnv: { level, rank: env.rank, table } }),
+        flags: scareFlags({ heartScarePending: scare.id, heartScareDc: env.dc, heartScareEnv: { level, rank: env.rank, table, biome } }),
       }));
     }
   }
@@ -120,12 +112,13 @@ export async function triggerScare(party, scene, reason = "", { force = false, t
 export async function resolveScareRoll(ctx, roller, nat) {
   const tag = (ctx.options ?? []).find((o) => o.startsWith(`${TAG.scare}:`));
   const id = tag?.slice(TAG.scare.length + 1);
-  const scare = scareById(id);
   const pending = roller.items.find((i) => i.getFlag("world", "heartScarePending") === id);
-  if (!scare || !pending) return;
+  if (!pending) return;
+  const envFlag = pending.getFlag("world", "heartScareEnv") ?? {};
+  const scare = findScare(id, envFlag.biome);
+  if (!scare) return;
   const deg = effectiveDegree(ctx, nat, dreadValue(roller));
   if (deg === null) return;
-  const envFlag = pending.getFlag("world", "heartScareEnv") ?? {};
   const c = {
     dv: dreadValue(roller),
     dc: pending.getFlag("world", "heartScareDc"),

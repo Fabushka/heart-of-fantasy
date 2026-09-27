@@ -5,7 +5,8 @@ import { getDread, dreadValue, dreadSource, setDread, partyInZone } from "./stat
 import { applyDread } from "./growth.js";
 import { meltdown } from "./meltdown.js";
 import { MELTDOWNS } from "./meltdowns.js";
-import { TABLES, triggerScare, dreadCheck, endScares, removeOwnScares, checkScareEnd } from "./scares/engine.js";
+import { triggerScare, dreadCheck, endScares, removeOwnScares, checkScareEnd } from "./scares/engine.js";
+import { BIOMES, getBiome, setBiome, scareList } from "./scares/biomes.js";
 
 const DialogV2 = () => foundry.applications.api.DialogV2;
 
@@ -47,13 +48,15 @@ async function ask(title, content, read) {
 
 async function pickScare() {
   const inCombat = !!game.combat?.started;
-  const table = (key) => TABLES[key].list.map((s, i) => [`${key}:${i + 1}`, `${i + 1}. ${s.name}`]);
+  const biome = getBiome(canvas.scene);
+  const b = BIOMES[biome].short;
+  const table = (key) => scareList(key, biome).map((s, i) => [`${key}:${i + 1}`, `${i + 1}. ${s.name}`]);
   const res = await ask(
     "Испуг: выбрать",
-    `<div class="form-group"><label>Испуг</label>${select("pick", [
-      ["random", `Случайный (${inCombat ? "бой" : "исследование"})`],
-      ["combat:random", "Случайный из таблицы боя"],
-      ["exploration:random", "Случайный из таблицы исследования"],
+    `<p>Биом сцены: <b>${BIOMES[biome].label}</b></p><div class="form-group"><label>Испуг</label>${select("pick", [
+      ["random", `Случайный (${inCombat ? "бой" : "исследование"}, ${b})`],
+      ["combat:random", `Случайный из таблицы боя (${b})`],
+      ["exploration:random", `Случайный из таблицы исследования (${b})`],
       ...table("combat").map(([v, l]) => [v, `Бой — ${l}`]),
       ...table("exploration").map(([v, l]) => [v, `Исследование — ${l}`]),
     ])}</div>`,
@@ -63,6 +66,15 @@ async function pickScare() {
   if (res === "random") return {};
   const [t, n] = res.split(":");
   return { table: t, n: n === "random" ? null : Number(n) };
+}
+
+async function pickBiome() {
+  const current = getBiome(canvas.scene);
+  const opts = Object.entries(BIOMES).map(([k, v]) => [k, `${k === current ? "● " : ""}${v.label}`]);
+  const res = await ask("Биом сцены", `<div class="form-group"><label>Биом</label>${select("pick", opts)}</div>`, (el) => el.pick.value);
+  if (!res || res === "cancel" || !canvas.scene) return;
+  await setBiome(canvas.scene, res);
+  ui.notifications.info(`Биом сцены: ${BIOMES[res].label}`);
 }
 
 async function pickMeltdown() {
@@ -86,6 +98,7 @@ const ACTIONS = [
   ["check", "Проверка Ужаса: 10 минут исследования (партия в зоне)"],
   ["scare", "Испуг: выбрать (партия в зоне)"],
   ["clear", "Снять все Испуги"],
+  ["biome", "Биом сцены для Испугов"],
 ];
 const NEED_SELECTED = new Set(["enter", "plus", "minus", "flee", "leave", "meltdown", "meltdownPick"]);
 
@@ -96,10 +109,11 @@ export async function manage() {
   const party = partyInZone(canvas.scene);
   const selected = actors.length ? actors.map((a) => `${a.name}: ${getDread(a)?.system.badge?.value ?? "вне зоны"}`).join("<br>") : "не выделены";
   const inZone = party.length ? party.map((a) => `${a.name} ${dreadValue(a)}`).join(", ") : "никого";
+  const biome = BIOMES[getBiome(canvas.scene)].label;
 
   const action = await ask(
     "Ужас",
-    `<p><b>Выделены:</b><br>${selected}</p><p><b>В зоне на сцене:</b> ${inZone}</p>` +
+    `<p><b>Выделены:</b><br>${selected}</p><p><b>В зоне на сцене:</b> ${inZone}</p><p><b>Биом:</b> ${biome}</p>` +
       `<div class="form-group">${select("action", ACTIONS)}</div>`,
     (el) => el.action.value,
   );
@@ -125,5 +139,6 @@ export async function manage() {
       return;
     }
     case "clear": return endScares(canvas.scene);
+    case "biome": return pickBiome();
   }
 }

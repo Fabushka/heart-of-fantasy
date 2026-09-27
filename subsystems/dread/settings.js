@@ -1,5 +1,6 @@
 // Настройки подсистемы Ужаса. Ключи прежние (dread…), чтобы сохранённые значения не потерялись.
 import { registerSetting, setting, modulePath } from "../../core/settings.js";
+import { BIOME_CHOICES } from "./scares/biomes.js";
 
 export const S = {
   enabled: () => setting("dreadEnabled"),
@@ -52,6 +53,13 @@ export function registerDreadSettings() {
     hint: "Чистая проверка DC 1 + суммарный Ужас партии в конце каждого раунда боя.",
     type: Boolean,
     default: true,
+  });
+  registerSetting("dreadBiome", {
+    name: "Испуг: биом по умолчанию",
+    hint: "Какая таблица Испугов исследования и какие существа в бою. Для отдельной сцены биом меняется в «Ужас — управление».",
+    type: String,
+    choices: BIOME_CHOICES,
+    default: "city",
   });
   registerSetting("dreadScareCooldown", {
     name: "Испуг: перезарядка (раунды)",

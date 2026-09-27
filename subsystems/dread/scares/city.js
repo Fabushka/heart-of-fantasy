@@ -1,4 +1,5 @@
-// Испуги в исследовании (d20). Больше нарратива, ловушки, болезни и яды.
+// Испуги в исследовании, биом «Город»: дом с привидениями, Осколок №2 (d20).
+// Больше нарратива, ловушки, болезни и яды.
 // Последствия живут дольше боевых: 10 минут, час, до отдыха; болезни — пока не вылечат.
 import { rounds, minutes, hours } from "../../../core/pf2e.js";
 import { fx, cond, hurt, status, rollTwiceWorse, trapped, stealConsumable, ambush } from "./helpers.js";
@@ -6,7 +7,7 @@ import { inflict } from "./afflictions.js";
 
 const nothing = { text: "ничего" };
 
-export const EXPLORATION_SCARES = [
+export const CITY_SCARES = [
   {
     id: "e01",
     name: "Мгла",
