@@ -1,14 +1,28 @@
-# Выпуск версии: запушить тег вида v0.1.1 (или GitHub → Releases → Draft a new release → новый тег → Publish).
+# Выпуск версии — любой из трёх способов:
+#   1) GitHub → Actions → Release → Run workflow → номер версии (например 0.1.1);
+#   2) GitHub → Releases → Draft a new release → новый тег v0.1.1 → Publish;
+#   3) запушить тег v0.1.1.
 # Сценарий сам проставит версию и ссылки в module.json, соберёт module.zip,
-# создаст релиз (если его ещё нет) и приложит оба файла. Forge увидит обновление по ссылке на манифест.
+# создаст релиз с описанием из CHANGELOG.md (если его ещё нет) и приложит файлы.
+# Forge увидит обновление по ссылке на манифест.
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Версия, например 0.1.1"
+        required: true
+  release:
+    types: [published]
   push:
     tags: ["v*"]
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.version || github.ref_name }}
 
 jobs:
   build:
@@ -16,14 +30,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Определить тег
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          [ -n "$TAG" ] || TAG="${{ inputs.version }}"
+          [ -n "$TAG" ] || TAG="$GITHUB_REF_NAME"
+          TAG="v${TAG#v}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+
       - name: Проставить версию и ссылки в module.json
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           REPO="${{ github.repository }}"
           jq --arg v "$VERSION" \
              --arg url "https://github.com/$REPO" \
              --arg manifest "https://github.com/$REPO/releases/latest/download/module.json" \
-             --arg download "https://github.com/$REPO/releases/download/$GITHUB_REF_NAME/module.zip" \
+             --arg download "https://github.com/$REPO/releases/download/$TAG/module.zip" \
              '.version=$v | .url=$url | .manifest=$manifest | .download=$download' \
              module.json > module.tmp && mv module.tmp module.json
 
@@ -32,7 +54,6 @@ jobs:
 
       - name: Описание релиза из CHANGELOG.md
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           awk -v v="## $VERSION" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md > notes.md
           [ -s notes.md ] || echo "Версия $VERSION" > notes.md
 
@@ -40,8 +61,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" module.json module.zip --clobber
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" module.json module.zip --clobber
           else
-            gh release create "$GITHUB_REF_NAME" module.json module.zip --title "$GITHUB_REF_NAME" --notes-file notes.md
+            gh release create "$TAG" module.json module.zip --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md
           fi
