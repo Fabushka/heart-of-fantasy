@@ -79,6 +79,8 @@ dread.triggerScare(dread.partyInZone(canvas.scene), canvas.scene, "причин�
 
 ## Выпуск новой версии
 
-GitHub → Releases → Draft a new release → тег `v0.1.1` → Publish release.
-GitHub Actions сам проставит версию, соберёт `module.zip` и приложит его к релизу.
+1. Дописать раздел `## 0.1.1` в `CHANGELOG.md`.
+2. Запушить тег `v0.1.1` (или GitHub → Releases → Draft a new release → новый тег `v0.1.1` → Publish release).
+
+GitHub Actions сам проставит версию, соберёт `module.zip`, создаст релиз с описанием из CHANGELOG и приложит файлы.
 Foundry увидит обновление по той же ссылке на манифест.

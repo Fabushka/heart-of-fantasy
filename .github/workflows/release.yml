@@ -1,11 +1,11 @@
-# Выпуск версии: GitHub → Releases → Draft a new release → тег вида v0.1.1 → Publish.
-# Этот сценарий сам проставит версию и ссылки в module.json, соберёт module.zip
-# и приложит оба файла к релизу. Forge увидит обновление по ссылке на манифест.
+# Выпуск версии: запушить тег вида v0.1.1 (или GitHub → Releases → Draft a new release → новый тег → Publish).
+# Сценарий сам проставит версию и ссылки в module.json, соберёт module.zip,
+# создаст релиз (если его ещё нет) и приложит оба файла. Forge увидит обновление по ссылке на манифест.
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: write
@@ -30,7 +30,18 @@ jobs:
       - name: Собрать module.zip
         run: zip -r module.zip module.json scripts README.md CHANGELOG.md
 
-      - name: Приложить файлы к релизу
+      - name: Описание релиза из CHANGELOG.md
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="## $VERSION" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Версия $VERSION" > notes.md
+
+      - name: Создать релиз и приложить файлы
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" module.json module.zip --clobber
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" module.json module.zip --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" module.json module.zip --title "$GITHUB_REF_NAME" --notes-file notes.md
+          fi
