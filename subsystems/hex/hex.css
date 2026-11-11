@@ -11,5 +11,14 @@
 }
 .hof-card.hof-hex table { width: 100%; margin: 4px 0; }
 .hof-card.hof-hex td, .hof-card.hof-hex th { padding: 1px 6px; text-align: left; }
-.hof-card.hof-hex button { width: 100%; }
+.hof-card.hof-hex .hof-button {
+  background: #3f8f69;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 4px 6px;
+  height: auto;
+  line-height: 1.25;
+  white-space: normal;
+}
+.hof-card.hof-hex .hof-button:hover:not(:disabled) { background: #4fa67c; }
 .hof-card .hof-muted { color: var(--hof-muted); font-size: var(--font-size-12, 12px); }

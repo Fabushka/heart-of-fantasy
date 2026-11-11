@@ -50,7 +50,7 @@ function findDoc(code) {
 
 // Кнопка под вытянутой записью: условие не выполнено — следующая по номеру.
 const nextButton = (tableId, resultId, scope) =>
-  `<p><button type="button" data-hof-action="hex-next" data-gm-only data-table="${tableId}" data-result="${resultId}" data-scope="${scope}">Условие не выполнено — следующая по номеру</button></p>`;
+  `<p><button type="button" class="hof-button" data-hof-action="hex-next" data-gm-only data-table="${tableId}" data-result="${resultId}" data-scope="${scope}">Условие не выполнено — следующая по номеру</button></p>`;
 
 function resultBody(result, table, scope) {
   const r = describe(result);
@@ -176,6 +176,7 @@ export async function enterHex() {
   const seen = coord ? st.hexes[coord] : null;
   const events = [];
   let body = "";
+  let rolled = false; // биомное считается брошенным, только если запись действительно вытянута
 
   if (aura) {
     body += `<p><b>${aura.id} · ${esc(aura.name)}</b> (вокруг ${aura.center})</p><blockquote>${esc(aura.text)}</blockquote><p class="hof-muted">${esc(aura.hint)}</p>`;
@@ -188,7 +189,7 @@ export async function enterHex() {
   }
 
   if (!biome) body += `<p><i>Биомного броска нет.</i></p>`;
-  else if (seen && !form.force) body += `<p><i>Гекс уже посещён в день ${seen.day}: биомное не бросается.</i></p>`;
+  else if (seen?.rolled && !form.force) body += `<p><i>Гекс уже посещён в день ${seen.day}: биомное не бросается.</i></p>`;
   else {
     const type = aura?.safe ? BIOME_TYPES[3] : BIOME_TYPES[d(4) - 1];
     const prefix = `${biome}-${type.letter}`;
@@ -201,6 +202,7 @@ export async function enterHex() {
       else {
         body += resultBody(result, table, "hex");
         events.push(describe(result).name);
+        rolled = true;
       }
     }
   }
@@ -215,6 +217,7 @@ export async function enterHex() {
       biome: biome ?? seen?.biome ?? null,
       day: seen?.day ?? st.day,
       visits: (seen?.visits ?? 0) + 1,
+      rolled: rolled || !!seen?.rolled,
       events: [...(seen?.events ?? []), ...events],
     };
   }

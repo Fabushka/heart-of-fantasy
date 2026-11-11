@@ -1,15 +1,22 @@
 // Работа с RollTable: найти по префиксу имени, вытянуть результат без возврата, взять следующий по номеру.
 // Тянем сами, а не через table.draw(): так бросок не попадает в чат и не зависит от версии ядра.
 
+import { BIOME_ALIASES } from "./data.js";
+
 const rnd = (n) => Math.floor((CONFIG.Dice?.randomUniform?.() ?? Math.random()) * n);
 export const d = (faces) => rnd(faces) + 1;
 
-// «LES-Б · Лес и джунгли, бой» находится по «LES-Б».
+// «LES-Б · Лес и джунгли, бой» находится по «LES-Б»; кириллическое «ЛЕС-Б» — тоже.
+function prefixes(prefix) {
+  const [key, letter] = prefix.toUpperCase().split("-");
+  return [key, ...(BIOME_ALIASES[key] ?? [])].map((k) => `${k}-${letter}`);
+}
+
 export function findTable(prefix) {
-  const p = prefix.toUpperCase();
+  const list = prefixes(prefix);
   return game.tables.find((t) => {
     const n = t.name.trim().toUpperCase();
-    return n === p || n.startsWith(`${p} `) || n.startsWith(`${p}·`);
+    return list.some((p) => n === p || n.startsWith(`${p} `) || n.startsWith(`${p}·`));
   }) ?? null;
 }
 
