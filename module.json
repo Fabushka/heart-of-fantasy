@@ -1,7 +1,7 @@
 {
   "id": "heart-of-fantasy",
   "title": "Сердце Фантазии — инструменты ГМ",
-  "description": "Механики кампании «Сердце Фантазии» для PF2e. Подсистемы: Ужас (Horror Mode) — рост Ужаса, Срывы, Испуги в бою и исследовании.",
+  "description": "Механики кампании «Сердце Фантазии» для PF2e. Подсистемы: Ужас (Horror Mode) — рост Ужаса, Срывы, Испуги в бою и исследовании; Гекс-исследование — пульт ГМ для похода по гексам.",
   "version": "0.3.0",
   "authors": [
     {
@@ -30,6 +30,7 @@
   "manifest": "https://github.com/Fabushka/heart-of-fantasy/releases/latest/download/module.json",
   "download": "https://github.com/Fabushka/heart-of-fantasy/releases/download/v0.3.0/module.zip",
   "styles": [
-    "subsystems/dread/dread.css"
+    "subsystems/dread/dread.css",
+    "subsystems/hex/hex.css"
   ]
 }

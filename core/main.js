@@ -6,8 +6,9 @@ import { ID } from "./settings.js";
 import { ensureMacros } from "./macros.js";
 import { initChat } from "./chat.js";
 import dread from "../subsystems/dread/index.js";
+import hex from "../subsystems/hex/index.js";
 
-const SUBSYSTEMS = [dread];
+const SUBSYSTEMS = [dread, hex];
 
 Hooks.once("init", () => {
   const api = {};

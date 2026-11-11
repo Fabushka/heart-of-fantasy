@@ -1,0 +1,15 @@
+/* Сердце Фантазии — карточки пульта гекс-исследования */
+.hof-card.hof-hex {
+  --hof-accent: #2f6b4f;
+  --hof-bg: linear-gradient(160deg, #131a17 0%, #1a2a22 100%);
+}
+.hof-card.hof-hex blockquote {
+  margin: 6px 0;
+  padding: 4px 8px;
+  border-left: 2px solid var(--hof-accent);
+  font-style: italic;
+}
+.hof-card.hof-hex table { width: 100%; margin: 4px 0; }
+.hof-card.hof-hex td, .hof-card.hof-hex th { padding: 1px 6px; text-align: left; }
+.hof-card.hof-hex button { width: 100%; }
+.hof-card .hof-muted { color: var(--hof-muted); font-size: var(--font-size-12, 12px); }
