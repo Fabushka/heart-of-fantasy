@@ -4,6 +4,9 @@ import { apiCall } from "../../core/macros.js";
 import { registerSetting, setting } from "../../core/settings.js";
 import { registerHexState, getState, resetState } from "./state.js";
 import { panel, newDay, enterHex, playToday, toggleHold, tableStatus, registerHexActions } from "./panel.js";
+import { openClock, startClock } from "./clock.js";
+
+const core = { panel, newDay, enterHex, playToday };
 
 export default {
   id: "hex",
@@ -17,20 +20,29 @@ export default {
       default: true,
       requiresReload: true,
     });
+    registerSetting("hexClockAuto", {
+      name: "Гекс-исследование: открывать окно похода при входе",
+      hint: "Окно с днём, временем, фазой дня и событием дня. Видит только ГМ.",
+      type: Boolean,
+      default: true,
+    });
     registerHexState();
     registerHexActions();
   },
 
   enabled: () => setting("hexEnabled"),
 
-  async start() {},
+  async start() {
+    startClock(core, setting("hexClockAuto"));
+  },
 
   macros: [
     { key: "hex-panel", name: "Гекс — пульт", img: "icons/svg/mountain.svg", command: `${apiCall("hex.panel")}();`, players: false },
+    { key: "hex-clock", name: "Гекс — окно похода", img: "icons/svg/clockwork.svg", command: `${apiCall("hex.clock")}();`, players: false },
     { key: "hex-enter", name: "Гекс — вошли в гекс", img: "icons/svg/direction.svg", command: `${apiCall("hex.enterHex")}();`, players: false },
     { key: "hex-day", name: "Гекс — новый день", img: "icons/svg/sun.svg", command: `${apiCall("hex.newDay")}();`, players: false },
   ],
 
   // game.modules.get("heart-of-fantasy").api.hex
-  api: { panel, newDay, enterHex, playToday, toggleHold, tableStatus, getState, resetState },
+  api: { panel, newDay, enterHex, playToday, toggleHold, tableStatus, getState, resetState, clock: () => openClock(core) },
 };

@@ -15,6 +15,7 @@ export const getState = () => foundry.utils.mergeObject(EMPTY(), foundry.utils.d
 
 export async function saveState(st) {
   await game.settings.set(ID, KEY, st);
+  Hooks.callAll(`${ID}.hexState`, st);
   try {
     await writeJournal(st);
   } catch (err) {
